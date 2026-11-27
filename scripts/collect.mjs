@@ -70,6 +70,88 @@ async function tiki(keyword) {
   }));
 }
 
+// ---------- Nguồn hàng Trung Quốc ----------
+async function getHTML(url) {
+  const r = await fetch(url, { headers: { 'User-Agent': UA, 'Accept-Language': 'en-US,en;q=0.9', Accept: 'text/html' } });
+  if (!r.ok) throw new Error('HTTP ' + r.status);
+  const html = await r.text();
+  if (/captcha|punish|_____tmd_____/i.test(html.slice(0, 4000))) throw new Error('bị chặn (captcha)');
+  return html;
+}
+// Lấy một khối JSON (mảng/đối tượng) bắt đầu ngay sau `marker` trong chuỗi HTML
+function sliceJSON(s, marker) {
+  const start = s.indexOf(marker);
+  if (start < 0) return null;
+  let i = start + marker.length, d = 0;
+  const begin = i;
+  for (; i < s.length; i++) {
+    const c = s[i];
+    if (c === '"') { i++; while (i < s.length && s[i] !== '"') { if (s[i] === '\\') i++; i++; } continue; }
+    if (c === '[' || c === '{') d++;
+    else if (c === ']' || c === '}') { d--; if (d === 0) break; }
+  }
+  return JSON.parse(s.slice(begin, i + 1));
+}
+const soldNum = (t) => { const m = String(t || '').replace(/,/g, '').match(/([\d.]+)\s*(k|万)?/i); if (!m) return 0;
+  return Math.round(parseFloat(m[1]) * (m[2] ? (m[2] === '万' ? 10000 : 1000) : 1)); };
+const fixUrl = (u) => (u && u.startsWith('//') ? 'https:' + u : u);
+
+// AliExpress: hàng bán lẻ từ TQ, sắp theo số đơn
+async function aliexpress(en) {
+  // AliExpress chặn khi tìm dồn dập: giãn cách và thử lại tối đa 3 lần
+  let html;
+  for (let t = 0; ; t++) {
+    try { await sleep(3000 + Math.random() * 2000); html = await aliexpressPage(en); break; }
+    catch (e) { if (t >= 2 || !/captcha/.test(e.message)) throw e; console.log(`  … AliExpress chặn tạm, chờ ${20 * (t + 1)}s rồi thử lại`); await sleep(20000 * (t + 1)); }
+  }
+  return html;
+}
+async function aliexpressPage(en) {
+  const html = await getHTML(`https://www.aliexpress.com/w/wholesale-${encodeURIComponent(en.trim().replace(/\s+/g, '-'))}.html?SortType=total_tranpro_desc`);
+  const items = sliceJSON(html, '"itemList":{"content":') || [];
+  return items.filter((x) => x.productId && x.title).map((x) => ({
+    id: x.productId,
+    name: x.title.displayTitle,
+    price: x.prices?.salePrice?.minPrice ?? null,
+    currency: x.prices?.salePrice?.currencyCode || '',
+    price_text: x.prices?.salePrice?.formattedPrice || '',
+    sold: soldNum(x.trade?.tradeDesc),
+    sold_text: x.trade?.tradeDesc || '',
+    rating: x.evaluation?.starRating || 0,
+    image: fixUrl(x.image?.imgUrl),
+    url: `https://www.aliexpress.com/item/${x.productId}.html`,
+  })).sort((a, b) => b.sold - a.sold).slice(0, 20);
+}
+
+// Made-in-China: giá sỉ từ xưởng + số lượng đặt tối thiểu (MOQ)
+async function madeInChina(en) {
+  const slug = en.trim().split(/\s+/).map((w) => w[0].toUpperCase() + w.slice(1)).join('_');
+  const html = await getHTML(`https://www.made-in-china.com/products-search/hot-china-products/${encodeURIComponent(slug)}.html`);
+  const parts = html.split('class="product-name"');
+  const out = [];
+  for (let i = 1; i < parts.length && out.length < 20; i++) {
+    const before = parts[i - 1].slice(-6000), b = parts[i].slice(0, 6000);
+    const a = b.match(/<a title="([^"]*)" href="([^"]+)"/);
+    if (!a) continue;
+    const price = b.match(/class="price">\s*US\$<span>([\d.,]+)<\/span>(?:-<span>([\d.,]+)<\/span>)?/);
+    const moq = b.match(/moq-new"><span class="attribute"><span>([^<]+)<\/span>/);
+    const company = b.match(/class="compnay-name"><span>([^<]+)<\/span>/);
+    const imgs = [...before.matchAll(/(?:data-original|src)="((?:https?:)?\/\/image\.made-in-china\.com\/[^"]+)"/g)];
+    const dec = (s) => s.replace(/&amp;/g, '&').replace(/&quot;/g, '"').replace(/&#39;/g, "'");
+    out.push({
+      name: dec(a[1]),
+      url: a[2],
+      price_min: price ? parseFloat(price[1].replace(/,/g, '')) : null,
+      price_max: price?.[2] ? parseFloat(price[2].replace(/,/g, '')) : null,
+      currency: 'USD',
+      moq: moq ? moq[1].trim() : '',
+      supplier: company ? dec(company[1]) : '',
+      image: imgs.length ? fixUrl(imgs[imgs.length - 1][1]) : null,
+    });
+  }
+  return out;
+}
+
 // ---------- Google Trends: tìm kiếm đang nổi ở VN ----------
 async function googleTrends() {
   const r = await fetch('https://trends.google.com/trending/rss?geo=VN', { headers: { 'User-Agent': UA } });
@@ -174,8 +256,8 @@ function score(list) {
 // ---------- Mã hóa dữ liệu bằng tài khoản + mật khẩu (AES-GCM, khóa PBKDF2) ----------
 // Dashboard phải nhập đúng tài khoản/mật khẩu mới giải mã được. Cấu hình qua biến môi trường
 // DASHBOARD_USER và DASHBOARD_PASSWORD (trên GitHub: Settings → Secrets → Actions).
-const USER = process.env.DASHBOARD_USER || '';
-const PASS = process.env.DASHBOARD_PASSWORD || '';
+const USER = (process.env.DASHBOARD_USER || '').trim();
+const PASS = (process.env.DASHBOARD_PASSWORD || '').trim();
 const ITER = 250000;
 const b64 = (u8) => Buffer.from(u8).toString('base64');
 const unb64 = (s) => new Uint8Array(Buffer.from(s, 'base64'));
@@ -203,6 +285,11 @@ async function main() {
   if (process.env.CI && !(USER && PASS)) {
     throw new Error('Thiếu DASHBOARD_USER / DASHBOARD_PASSWORD trong GitHub Secrets (ADMIN, ADMIN2) – dừng để không công khai dữ liệu chưa mã hóa.');
   }
+  if (USER && PASS) {
+    // Chỉ in độ dài (không in giá trị) để dò lỗi gõ thừa khoảng trắng / xuống dòng
+    const raw = (v) => process.env[v] || '';
+    console.log(`🔐 Tài khoản: ${USER.length} ký tự (gốc ${raw('DASHBOARD_USER').length}); mật khẩu: ${PASS.length} ký tự (gốc ${raw('DASHBOARD_PASSWORD').length})`);
+  }
   const history = loadHistory();
   const prev = await readPrev();
   const errors = [];
@@ -225,8 +312,20 @@ async function main() {
         p.per_day = b ? Math.max(0, Math.round(((p.sold - b.sold) / b.days) * 10) / 10) : null;
         p.base_days = b?.days ?? null;
       }
-      keywords.push({ category, keyword: kw, products });
-      console.log(`✓ ${category} / ${kw}: ${products.length} sản phẩm`);
+      // Nguồn hàng Trung Quốc (cần từ khóa tiếng Anh/Trung trong config.json → tu_khoa_nguon_hang)
+      const tr = config.tu_khoa_nguon_hang?.[kw];
+      const prevChina = prev?.keywords.find((k) => k.keyword === kw)?.china;
+      let china = null;
+      if (tr?.en) {
+        china = { en: tr.en, zh: tr.zh || '', aliexpress: [], mic: [] };
+        try { china.aliexpress = await aliexpress(tr.en); }
+        catch (e) { errors.push(`AliExpress "${tr.en}": ${e.message}`); china.aliexpress = prevChina?.aliexpress || []; }
+        await sleep(800);
+        try { china.mic = await madeInChina(tr.en); }
+        catch (e) { errors.push(`Made-in-China "${tr.en}": ${e.message}`); china.mic = prevChina?.mic || []; }
+      }
+      keywords.push({ category, keyword: kw, products, china });
+      console.log(`✓ ${category} / ${kw}: ${products.length} SP Tiki` + (china ? `, ${china.aliexpress.length} AliExpress, ${china.mic.length} Made-in-China` : ''));
       await sleep(800);
     }
   }
@@ -259,6 +358,7 @@ async function main() {
     updated_at: new Date().toISOString(),
     date: today,
     history_days: history.length,
+    usd_vnd: config.ty_gia_usd_vnd || 26000,
     keywords,
     trends,
     errors,

@@ -1,11 +1,30 @@
 {
-  "_huong_dan": "Sửa danh sách ngành hàng và từ khóa bên dưới. Mỗi từ khóa sẽ được tìm trên Tiki mỗi ngày (lấy top bán chạy).",
+  "_huong_dan": "Sửa danh sách ngành hàng và từ khóa bên dưới. Mỗi từ khóa sẽ được tìm trên Tiki mỗi ngày (lấy top bán chạy). Muốn xem nguồn hàng Trung Quốc thì thêm bản dịch tiếng Anh (en) và tiếng Trung (zh) ở mục tu_khoa_nguon_hang.",
   "so_san_pham_moi_tu_khoa": 30,
+  "ty_gia_usd_vnd": 26300,
   "nganh_hang": {
     "Phụ kiện xe điện": ["sạc xe máy điện", "mũ bảo hiểm", "áo mưa xe máy", "khóa chống trộm xe máy"],
     "Gia dụng": ["nồi chiên không dầu", "máy lọc không khí", "robot hút bụi", "quạt tích điện"],
     "Điện thoại & phụ kiện": ["tai nghe bluetooth", "sạc dự phòng", "ốp lưng iphone"],
     "Làm đẹp": ["kem chống nắng", "sữa rửa mặt", "serum vitamin c"],
     "Mẹ & bé": ["bỉm", "sữa bột"]
+  },
+  "tu_khoa_nguon_hang": {
+    "sạc xe máy điện": { "en": "electric scooter charger", "zh": "电动车充电器" },
+    "mũ bảo hiểm": { "en": "motorcycle helmet", "zh": "摩托车头盔" },
+    "áo mưa xe máy": { "en": "motorcycle raincoat", "zh": "电动车雨衣" },
+    "khóa chống trộm xe máy": { "en": "motorcycle disc lock", "zh": "摩托车防盗锁" },
+    "nồi chiên không dầu": { "en": "air fryer", "zh": "空气炸锅" },
+    "máy lọc không khí": { "en": "air purifier", "zh": "空气净化器" },
+    "robot hút bụi": { "en": "robot vacuum cleaner", "zh": "扫地机器人" },
+    "quạt tích điện": { "en": "portable rechargeable fan", "zh": "充电小风扇" },
+    "tai nghe bluetooth": { "en": "bluetooth earphones", "zh": "蓝牙耳机" },
+    "sạc dự phòng": { "en": "power bank", "zh": "充电宝" },
+    "ốp lưng iphone": { "en": "iphone case", "zh": "苹果手机壳" },
+    "kem chống nắng": { "en": "sunscreen", "zh": "防晒霜" },
+    "sữa rửa mặt": { "en": "facial cleanser", "zh": "洗面奶" },
+    "serum vitamin c": { "en": "vitamin c serum", "zh": "维C精华" },
+    "bỉm": { "en": "baby diapers", "zh": "纸尿裤" },
+    "sữa bột": { "en": "milk powder", "zh": "奶粉" }
   }
 }

@@ -33,3 +33,14 @@ node scripts/collect.mjs
 node scripts/serve.mjs
 ```
 Sau đó mở http://localhost:8080
+
+## Nguồn hàng Trung Quốc
+Mỗi từ khóa có bản dịch tiếng Anh/Trung trong `config.json` → `tu_khoa_nguon_hang` sẽ được tìm thêm trên:
+- **AliExpress** (tự động): hàng TQ bán lẻ chạy nhất, có số đã bán.
+- **Made-in-China** (tự động): giá sỉ từ xưởng và MOQ.
+- **1688, Taobao, Douyin, Alibaba** (nút mở nhanh): các trang này chặn lấy tự động.
+
+Dashboard so giá bán ở VN (Tiki) với giá lẻ và giá sỉ TQ (quy đổi theo `ty_gia_usd_vnd`).
+
+## Đăng nhập
+Dữ liệu dashboard được mã hóa bằng tài khoản/mật khẩu lấy từ GitHub Secrets `ADMIN` (tài khoản) và `ADMIN2` (mật khẩu).

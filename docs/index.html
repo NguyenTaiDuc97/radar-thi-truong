@@ -62,6 +62,16 @@
   .tools a:last-child{border-bottom:0}
   .tools span{display:block;color:var(--muted);font-size:12px}
   .empty{color:var(--muted);padding:30px;text-align:center}
+  .cn-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(300px,1fr));gap:16px}
+  .cn-grid h3{font-size:13px;margin:0 0 6px;color:var(--muted);font-weight:600}
+  .clist{max-height:520px;overflow:auto}
+  .it{display:flex;gap:10px;padding:8px 0;border-bottom:1px solid var(--line);align-items:center}
+  .it:last-child{border-bottom:0}
+  .it .pname{max-width:none}
+  .it .r{margin-left:auto;text-align:right;white-space:nowrap;font-variant-numeric:tabular-nums;font-size:13px}
+  .cmp{display:grid;grid-template-columns:repeat(auto-fit,minmax(170px,1fr));gap:10px;margin-bottom:14px}
+  .cmp .tile .v{font-size:18px}
+  .cmp .tile .meta{margin-top:2px}
   #login{position:fixed;inset:0;background:var(--bg);display:flex;align-items:center;justify-content:center;padding:16px;z-index:10}
   #login[hidden]{display:none}
   #login form{background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:24px;width:100%;max-width:340px}
@@ -105,6 +115,12 @@
   <div class="panel">
     <h2>Từ khóa theo dõi <span class="sub">– bấm tên để lọc, bấm nút để mở trang bán chạy trên từng nền tảng</span></h2>
     <div class="scroll" style="max-height:420px"><table id="kwTable"></table></div>
+  </div>
+
+  <div class="panel" id="cnPanel">
+    <h2>🏮 Nguồn hàng Trung Quốc <span class="sub">– hàng TQ đang bán chạy và giá sỉ từ xưởng, so với giá bán ở VN</span></h2>
+    <div class="filters"><select id="cnKw"></select><div class="links" id="cnLinks"></div></div>
+    <div id="cnBody"></div>
   </div>
 
   <div class="grid2">
@@ -160,7 +176,7 @@ const KEY_STORE = 'radar_key';
 const u8 = (s) => Uint8Array.from(atob(s), (c) => c.charCodeAt(0));
 const b64 = (buf) => btoa(String.fromCharCode(...new Uint8Array(buf)));
 async function deriveRaw(user, pass, enc) {
-  const base = await crypto.subtle.importKey('raw', new TextEncoder().encode(user.trim().toLowerCase() + '\n' + pass), 'PBKDF2', false, ['deriveBits']);
+  const base = await crypto.subtle.importKey('raw', new TextEncoder().encode(user.trim().toLowerCase() + '\n' + pass.trim()), 'PBKDF2', false, ['deriveBits']);
   return crypto.subtle.deriveBits({ name: 'PBKDF2', salt: u8(enc.salt), iterations: enc.iter, hash: 'SHA-256' }, base, 256);
 }
 async function decryptWith(raw, enc) {
@@ -202,11 +218,13 @@ async function start() {
     e.preventDefault();
     const user = $('#lu').value, pass = $('#lp').value;
     $('#lb').disabled = true; $('#lb').textContent = 'Đang kiểm tra…'; $('#loginErr').textContent = '';
-    const d = await tryLogin(user, pass);
+    // thử thêm trường hợp nhập ngược tài khoản / mật khẩu
+    let pair = [user, pass], d = await tryLogin(...pair);
+    if (!d) { pair = [pass, user]; d = await tryLogin(...pair); }
     $('#lb').disabled = false; $('#lb').textContent = 'Đăng nhập';
     if (!d) { $('#loginErr').textContent = 'Sai tài khoản hoặc mật khẩu.'; $('#lp').select(); return; }
-    sessionStorage.setItem(KEY_STORE, JSON.stringify([user, pass]));
-    if ($('#lr').checked) await remember(user, pass);
+    sessionStorage.setItem(KEY_STORE, JSON.stringify(pair));
+    if ($('#lr').checked) await remember(...pair);
     $('#login').hidden = true; D = d; init();
   };
 }
@@ -246,7 +264,8 @@ function init() {
   const cats = [...new Set(D.keywords.map((k) => k.category))];
   $('#fCat').innerHTML = '<option value="">Tất cả ngành hàng</option>' + cats.map((c) => `<option>${esc(c)}</option>`).join('');
   $('#fCat').onchange = (e) => { state.cat = e.target.value; state.kw = ''; fillKw(); renderP(); };
-  $('#fKw').onchange = (e) => { state.kw = e.target.value; renderP(); };
+  $('#fKw').onchange = (e) => { state.kw = e.target.value; renderP(); syncChina(state.kw); };
+  initChina();
   $('#fQ').oninput = (e) => { state.q = e.target.value.toLowerCase(); renderP(); };
   const plats = [...new Set(all.map((p) => p.platform))];
   $('#fPlat').innerHTML = ['', ...plats].map((p) => `<button class="chip ${p === '' ? 'on' : ''}" data-p="${esc(p)}">${p || 'Tất cả nền tảng'}</button>`).join('');
@@ -273,7 +292,61 @@ function renderKw(hasVel) {
     </tr>`).join('') + '</tbody>';
   $('#kwTable').onclick = (e) => { const a = e.target.closest('a[data-kw]'); if (!a) return; e.preventDefault();
     const k = D.keywords.find((x) => x.keyword === a.dataset.kw); state.cat = k.category; state.kw = k.keyword;
-    $('#fCat').value = k.category; fillKw(); renderP(); $('#pTable').scrollIntoView({ behavior: 'smooth', block: 'start' }); };
+    $('#fCat').value = k.category; fillKw(); renderP(); syncChina(k.keyword); $('#cnPanel').scrollIntoView({ behavior: 'smooth', block: 'start' }); };
+}
+
+// ---------- Nguồn hàng Trung Quốc ----------
+const CN_LINKS = (c) => [
+  ['1688 (sỉ)', `https://s.1688.com/selloffer/offer_search.htm?charset=utf8&keywords=${enc(c.zh || c.en)}`],
+  ['Taobao', `https://s.taobao.com/search?q=${enc(c.zh || c.en)}&sort=sale-desc`],
+  ['Douyin', `https://www.douyin.com/search/${enc(c.zh || c.en)}`],
+  ['Alibaba', `https://www.alibaba.com/trade/search?SearchText=${enc(c.en)}`],
+  ['AliExpress', `https://www.aliexpress.com/w/wholesale-${enc(c.en.replace(/\s+/g, '-'))}.html?SortType=total_tranpro_desc`],
+  ['Made-in-China', `https://www.made-in-china.com/multi-search/${enc(c.en)}/F1/1.html`],
+];
+const toVND = (price, cur) => price == null ? null : cur === 'VND' ? price : cur === 'USD' ? price * (D.usd_vnd || 26000) : null;
+const vnd = (n) => n == null ? '–' : (n >= 1e6 ? (n / 1e6).toLocaleString('vi-VN', { maximumFractionDigits: 1 }) + ' tr' : Math.round(n / 1000).toLocaleString('vi-VN') + 'k') + '₫';
+const median = (a) => { const s = a.filter((x) => x > 0).sort((x, y) => x - y); return s.length ? s[Math.floor(s.length / 2)] : null; };
+
+function initChina() {
+  const ks = D.keywords.filter((k) => k.china);
+  if (!ks.length) { $('#cnPanel').hidden = true; return; }
+  $('#cnKw').innerHTML = ks.map((k) => `<option>${esc(k.keyword)}</option>`).join('');
+  $('#cnKw').onchange = (e) => renderChina(e.target.value);
+  renderChina(ks[0].keyword);
+}
+function syncChina(kw) { if (D.keywords.find((k) => k.keyword === kw)?.china) { $('#cnKw').value = kw; renderChina(kw); } }
+
+function renderChina(kw) {
+  const k = D.keywords.find((x) => x.keyword === kw), c = k.china;
+  $('#cnLinks').innerHTML = `<span class="meta">${esc(c.zh)} · ${esc(c.en)} — mở:</span> ` + CN_LINKS(c).map(([n, u]) => `<a href="${u}" target="_blank" rel="noopener">${n}</a>`).join('');
+
+  const vn = median(k.products.filter((p) => !p.manual).map((p) => p.price));
+  const ali = median(c.aliexpress.map((p) => toVND(p.price, p.currency)));
+  const mic = median(c.mic.map((p) => toVND(p.price_min, 'USD')));
+  const ratio = (a, b) => a && b ? `giá VN gấp ${(a / b).toLocaleString('vi-VN', { maximumFractionDigits: 1 })} lần` : '';
+  const cmp = `<div class="cmp">
+    <div class="tile"><div class="k">Giá bán ở VN (Tiki, trung vị)</div><div class="v">${vnd(vn)}</div></div>
+    <div class="tile"><div class="k">Giá lẻ TQ (AliExpress, trung vị)</div><div class="v">${vnd(ali)}</div><div class="meta">${ratio(vn, ali)}</div></div>
+    <div class="tile"><div class="k">Giá sỉ xưởng (Made-in-China, trung vị)</div><div class="v">${vnd(mic)}</div><div class="meta">${ratio(vn, mic)}</div></div>
+  </div>`;
+
+  const aliList = c.aliexpress.length ? c.aliexpress.map((p) => `<div class="it">
+      ${p.image ? `<img class="pimg" loading="lazy" src="${esc(p.image)}" alt="">` : '<div class="pimg"></div>'}
+      <a class="pname" href="${esc(p.url)}" target="_blank" rel="noopener">${esc(p.name)}</a>
+      <div class="r"><b>${esc(p.price_text) || vnd(toVND(p.price, p.currency))}</b><div class="meta">${esc(p.sold_text || '–')}</div></div>
+    </div>`).join('') : '<div class="empty">Chưa có dữ liệu</div>';
+  const micList = c.mic.length ? c.mic.map((p) => `<div class="it">
+      ${p.image ? `<img class="pimg" loading="lazy" src="${esc(p.image)}" alt="">` : '<div class="pimg"></div>'}
+      <div style="min-width:0"><a class="pname" href="${esc(p.url)}" target="_blank" rel="noopener">${esc(p.name)}</a><div class="meta">${esc(p.supplier)}</div></div>
+      <div class="r"><b>${p.price_min != null ? 'US$' + p.price_min + (p.price_max ? '–' + p.price_max : '') : 'Liên hệ'}</b>
+        <div class="meta">${p.price_min != null ? '≈ ' + vnd(toVND(p.price_min, 'USD')) + ' · ' : ''}MOQ ${esc(p.moq || '–')}</div></div>
+    </div>`).join('') : '<div class="empty">Không có kết quả – bấm "1688 (sỉ)" hoặc "Alibaba" để xem tay</div>';
+
+  $('#cnBody').innerHTML = cmp + `<div class="cn-grid">
+    <div><h3>🔥 AliExpress – bán chạy nhất (bán lẻ từ TQ)</h3><div class="clist">${aliList}</div></div>
+    <div><h3>🏭 Made-in-China – giá sỉ từ xưởng</h3><div class="clist">${micList}</div></div>
+  </div>`;
 }
 
 const COLS = [
