@@ -341,7 +341,7 @@ function renderChina(kw) {
       <div style="min-width:0"><a class="pname" href="${esc(p.url)}" target="_blank" rel="noopener">${esc(p.name)}</a><div class="meta">${esc(p.supplier)}</div></div>
       <div class="r"><b>${p.price_min != null ? 'US$' + p.price_min + (p.price_max ? '–' + p.price_max : '') : 'Liên hệ'}</b>
         <div class="meta">${p.price_min != null ? '≈ ' + vnd(toVND(p.price_min, 'USD')) + ' · ' : ''}MOQ ${esc(p.moq || '–')}</div></div>
-    </div>`).join('') : '<div class="empty">Không có kết quả – bấm "1688 (sỉ)" hoặc "Alibaba" để xem tay</div>';
+    </div>`).join('') : (D.mic_blocked ? '<div class="empty">ℹ️ Made-in-China không cho máy chủ cập nhật tự động lấy dữ liệu.<br>Bấm nút <b>1688 (sỉ)</b>, <b>Alibaba</b> hoặc <b>Made-in-China</b> ở trên để xem giá sỉ.</div>' : '<div class="empty">Không có kết quả – bấm "1688 (sỉ)" hoặc "Alibaba" để xem tay</div>');
 
   $('#cnBody').innerHTML = cmp + `<div class="cn-grid">
     <div><h3>🔥 AliExpress – bán chạy nhất (bán lẻ từ TQ)</h3><div class="clist">${aliList}</div></div>

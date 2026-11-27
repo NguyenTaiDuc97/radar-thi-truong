@@ -327,7 +327,7 @@ async function main() {
           try { china.mic = await madeInChina(tr.en); }
           catch (e) {
             // Made-in-China chặn IP máy chủ GitHub (403): báo 1 lần rồi bỏ qua các từ khóa còn lại
-            if (/403|captcha/.test(e.message)) { micBlocked = true; errors.push(`Made-in-China chặn máy chủ (${e.message}) – giữ dữ liệu cũ, xem tay bằng nút Made-in-China`); }
+            if (/403|captcha/.test(e.message)) { micBlocked = true; console.log(`  … Made-in-China chặn máy chủ (${e.message}), bỏ qua`); }
             else errors.push(`Made-in-China "${tr.en}": ${e.message}`);
           }
         }
@@ -366,6 +366,7 @@ async function main() {
     updated_at: new Date().toISOString(),
     date: today,
     history_days: history.length,
+    mic_blocked: micBlocked,   // Made-in-China chặn máy chủ GitHub: không phải lỗi, chỉ ghi chú trên dashboard
     usd_vnd: config.ty_gia_usd_vnd || 26000,
     keywords,
     trends,
