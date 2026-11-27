@@ -8,6 +8,8 @@ on:
     paths:
       - config.json
       - data/manual.csv
+      - scripts/collect.mjs
+      - .github/workflows/update.yml
 
 permissions:
   contents: write
