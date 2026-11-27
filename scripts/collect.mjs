@@ -171,9 +171,40 @@ function score(list) {
   }
 }
 
+// ---------- Mã hóa dữ liệu bằng tài khoản + mật khẩu (AES-GCM, khóa PBKDF2) ----------
+// Dashboard phải nhập đúng tài khoản/mật khẩu mới giải mã được. Cấu hình qua biến môi trường
+// DASHBOARD_USER và DASHBOARD_PASSWORD (trên GitHub: Settings → Secrets → Actions).
+const USER = process.env.DASHBOARD_USER || '';
+const PASS = process.env.DASHBOARD_PASSWORD || '';
+const ITER = 250000;
+const b64 = (u8) => Buffer.from(u8).toString('base64');
+const unb64 = (s) => new Uint8Array(Buffer.from(s, 'base64'));
+async function deriveKey(salt) {
+  const base = await crypto.subtle.importKey('raw', new TextEncoder().encode(USER.trim().toLowerCase() + '\n' + PASS), 'PBKDF2', false, ['deriveKey']);
+  return crypto.subtle.deriveKey({ name: 'PBKDF2', salt, iterations: ITER, hash: 'SHA-256' }, base, { name: 'AES-GCM', length: 256 }, false, ['encrypt', 'decrypt']);
+}
+async function encrypt(obj) {
+  const salt = crypto.getRandomValues(new Uint8Array(16));
+  const iv = crypto.getRandomValues(new Uint8Array(12));
+  const ct = await crypto.subtle.encrypt({ name: 'AES-GCM', iv }, await deriveKey(salt), new TextEncoder().encode(JSON.stringify(obj)));
+  return { encrypted: true, v: 1, iter: ITER, salt: b64(salt), iv: b64(iv), data: b64(new Uint8Array(ct)) };
+}
+async function readPrev() {
+  if (!fs.existsSync(OUT)) return null;
+  const j = JSON.parse(fs.readFileSync(OUT, 'utf8'));
+  if (!j.encrypted) return j;
+  try {
+    const pt = await crypto.subtle.decrypt({ name: 'AES-GCM', iv: unb64(j.iv) }, await deriveKey(unb64(j.salt)), unb64(j.data));
+    return JSON.parse(new TextDecoder().decode(pt));
+  } catch { return null; }
+}
+
 async function main() {
+  if (process.env.CI && !(USER && PASS)) {
+    throw new Error('Thiếu DASHBOARD_USER / DASHBOARD_PASSWORD trong GitHub Secrets – dừng để không công khai dữ liệu chưa mã hóa.');
+  }
   const history = loadHistory();
-  const prev = fs.existsSync(OUT) ? JSON.parse(fs.readFileSync(OUT, 'utf8')) : null;
+  const prev = await readPrev();
   const errors = [];
   const keywords = [];
   const snapshot = {};
@@ -233,7 +264,8 @@ async function main() {
     errors,
   };
   fs.mkdirSync(path.dirname(OUT), { recursive: true });
-  fs.writeFileSync(OUT, JSON.stringify(out));
+  fs.writeFileSync(OUT, JSON.stringify(USER && PASS ? await encrypt(out) : out));
+  if (!(USER && PASS)) console.log('⚠️  Chưa đặt DASHBOARD_USER/DASHBOARD_PASSWORD: data.json KHÔNG mã hóa (chỉ dùng trên máy).');
   console.log(`\nXong: ${keywords.length} từ khóa, ${trends.length} xu hướng Google. Lỗi: ${errors.length}`);
   if (errors.length) console.log(errors.join('\n'));
 }

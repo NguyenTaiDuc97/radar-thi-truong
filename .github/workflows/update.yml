@@ -26,6 +26,9 @@ jobs:
           node-version: 22
       - name: Thu thập dữ liệu
         run: node scripts/collect.mjs
+        env:
+          DASHBOARD_USER: ${{ secrets.DASHBOARD_USER }}
+          DASHBOARD_PASSWORD: ${{ secrets.DASHBOARD_PASSWORD }}
       - name: Lưu kết quả vào repo
         run: |
           git config user.name "radar-bot"

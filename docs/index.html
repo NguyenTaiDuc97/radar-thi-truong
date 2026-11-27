@@ -62,10 +62,34 @@
   .tools a:last-child{border-bottom:0}
   .tools span{display:block;color:var(--muted);font-size:12px}
   .empty{color:var(--muted);padding:30px;text-align:center}
+  #login{position:fixed;inset:0;background:var(--bg);display:flex;align-items:center;justify-content:center;padding:16px;z-index:10}
+  #login[hidden]{display:none}
+  #login form{background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:24px;width:100%;max-width:340px}
+  #login h1{margin-bottom:4px}
+  #login label{display:block;font-size:13px;color:var(--muted);margin:14px 0 4px}
+  #login input[type=text],#login input[type=password]{width:100%;font:inherit;color:inherit;background:var(--soft);border:1px solid var(--line);border-radius:8px;padding:9px 10px}
+  #login .row{display:flex;align-items:center;gap:6px;margin-top:12px;font-size:13px;color:var(--muted)}
+  #login button{width:100%;margin-top:16px;font:inherit;font-weight:600;background:var(--accent);color:#fff;border:0;border-radius:8px;padding:10px;cursor:pointer}
+  #login button:disabled{opacity:.6;cursor:wait}
+  #loginErr{color:var(--hot);font-size:13px;margin-top:10px;min-height:1em}
+  .logout{font:inherit;font-size:12px;background:none;border:1px solid var(--line);color:var(--muted);border-radius:6px;padding:2px 8px;margin-left:8px;cursor:pointer}
   @media (max-width:640px){.hide-m{display:none}.pname{max-width:200px}}
 </style>
 </head>
 <body>
+<div id="login" hidden>
+  <form id="loginForm" autocomplete="on">
+    <h1>📈 Radar Thị Trường</h1>
+    <div class="sub">Đăng nhập để xem dữ liệu</div>
+    <label for="lu">Tài khoản</label>
+    <input type="text" id="lu" name="username" autocomplete="username" required autofocus>
+    <label for="lp">Mật khẩu</label>
+    <input type="password" id="lp" name="password" autocomplete="current-password" required>
+    <label class="row"><input type="checkbox" id="lr"> Ghi nhớ trên thiết bị này</label>
+    <button type="submit" id="lb">Đăng nhập</button>
+    <div id="loginErr"></div>
+  </form>
+</div>
 <div class="wrap">
   <header>
     <div>
@@ -131,12 +155,68 @@ const LINKS = (kw) => [
 
 let D, state = { cat: '', kw: '', plat: '', q: '', sort: 'score', dir: -1 };
 
-fetch('data.json?' + Date.now()).then((r) => r.json()).then((d) => { D = d; init(); })
-  .catch(() => { $('#updated').textContent = ''; $('#msg').innerHTML = '<div class="err">Không đọc được data.json. Hãy chạy <code>node scripts/collect.mjs</code> trước, và mở trang qua máy chủ (node scripts/serve.mjs), không mở trực tiếp file.</div>'; });
+// ---------- Đăng nhập: dữ liệu được mã hóa, chỉ giải được bằng đúng tài khoản + mật khẩu ----------
+const KEY_STORE = 'radar_key';
+const u8 = (s) => Uint8Array.from(atob(s), (c) => c.charCodeAt(0));
+const b64 = (buf) => btoa(String.fromCharCode(...new Uint8Array(buf)));
+async function deriveRaw(user, pass, enc) {
+  const base = await crypto.subtle.importKey('raw', new TextEncoder().encode(user.trim().toLowerCase() + '\n' + pass), 'PBKDF2', false, ['deriveBits']);
+  return crypto.subtle.deriveBits({ name: 'PBKDF2', salt: u8(enc.salt), iterations: enc.iter, hash: 'SHA-256' }, base, 256);
+}
+async function decryptWith(raw, enc) {
+  const key = await crypto.subtle.importKey('raw', raw, 'AES-GCM', false, ['decrypt']);
+  const pt = await crypto.subtle.decrypt({ name: 'AES-GCM', iv: u8(enc.iv) }, key, u8(enc.data));
+  return JSON.parse(new TextDecoder().decode(pt));
+}
+// "Ghi nhớ": salt đổi mỗi lần cập nhật nên phải nhớ tài khoản + mật khẩu; chúng được mã hóa
+// bằng một khóa ngẫu nhiên không xuất ra được, cất trong IndexedDB của trình duyệt.
+function idb() {
+  return new Promise((res, rej) => { const r = indexedDB.open('radar', 1); r.onupgradeneeded = () => r.result.createObjectStore('kv'); r.onsuccess = () => res(r.result); r.onerror = () => rej(r.error); });
+}
+async function idbOp(mode, fn) { const db = await idb(); return new Promise((res, rej) => { const tx = db.transaction('kv', mode); const req = fn(tx.objectStore('kv')); tx.oncomplete = () => res(req?.result); tx.onerror = () => rej(tx.error); }); }
+async function remember(user, pass) {
+  const k = await crypto.subtle.generateKey({ name: 'AES-GCM', length: 256 }, false, ['encrypt', 'decrypt']);
+  const iv = crypto.getRandomValues(new Uint8Array(12));
+  const ct = await crypto.subtle.encrypt({ name: 'AES-GCM', iv }, k, new TextEncoder().encode(JSON.stringify([user, pass])));
+  await idbOp('readwrite', (s) => s.put({ k, iv, ct }, KEY_STORE));
+}
+async function recall() {
+  try { const v = await idbOp('readonly', (s) => s.get(KEY_STORE)); if (!v) return null;
+    return JSON.parse(new TextDecoder().decode(await crypto.subtle.decrypt({ name: 'AES-GCM', iv: v.iv }, v.k, v.ct)));
+  } catch { return null; }
+}
+async function forget() { try { await idbOp('readwrite', (s) => s.delete(KEY_STORE)); } catch {} sessionStorage.removeItem(KEY_STORE); }
+
+async function start() {
+  let enc;
+  try { enc = await (await fetch('data.json?' + Date.now())).json(); }
+  catch { $('#updated').textContent = ''; $('#msg').innerHTML = '<div class="err">Không đọc được data.json. Hãy chạy <code>node scripts/collect.mjs</code> trước, và mở trang qua máy chủ (node scripts/serve.mjs), không mở trực tiếp file.</div>'; return; }
+  if (!enc.encrypted) { D = enc; return init(); }   // chạy trên máy chưa đặt mật khẩu
+
+  const tryLogin = async (user, pass) => { try { return await decryptWith(await deriveRaw(user, pass, enc), enc); } catch { return null; } };
+  const saved = JSON.parse(sessionStorage.getItem(KEY_STORE) || 'null') || await recall();
+  if (saved) { const d = await tryLogin(...saved); if (d) { D = d; return init(); } await forget(); }
+
+  $('#login').hidden = false;
+  $('#loginForm').onsubmit = async (e) => {
+    e.preventDefault();
+    const user = $('#lu').value, pass = $('#lp').value;
+    $('#lb').disabled = true; $('#lb').textContent = 'Đang kiểm tra…'; $('#loginErr').textContent = '';
+    const d = await tryLogin(user, pass);
+    $('#lb').disabled = false; $('#lb').textContent = 'Đăng nhập';
+    if (!d) { $('#loginErr').textContent = 'Sai tài khoản hoặc mật khẩu.'; $('#lp').select(); return; }
+    sessionStorage.setItem(KEY_STORE, JSON.stringify([user, pass]));
+    if ($('#lr').checked) await remember(user, pass);
+    $('#login').hidden = true; D = d; init();
+  };
+}
+start();
 
 function init() {
   const t = new Date(D.updated_at);
-  $('#updated').textContent = 'Cập nhật: ' + t.toLocaleString('vi-VN', { dateStyle: 'medium', timeStyle: 'short' });
+  $('#updated').innerHTML = 'Cập nhật: ' + t.toLocaleString('vi-VN', { dateStyle: 'medium', timeStyle: 'short' })
+    + ' <button class="logout" id="logout">Đăng xuất</button>';
+  $('#logout').onclick = async () => { await forget(); location.reload(); };
 
   const all = D.keywords.flatMap((k) => k.products.map((p) => ({ ...p, keyword: k.keyword, cat: k.category })));
   D.all = all;
