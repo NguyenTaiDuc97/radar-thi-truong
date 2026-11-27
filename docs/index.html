@@ -159,6 +159,11 @@ const fmt = (n) => n == null ? '–' : Number(n).toLocaleString('vi-VN');
 const money = (n) => n == null ? '–' : Number(n).toLocaleString('vi-VN') + '₫';
 const esc = (s) => String(s ?? '').replace(/[&<>"']/g, (c) => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 const enc = encodeURIComponent;
+// Ảnh: ae01.alicdn.com bị chặn khi xem từ VN -> đổi sang máy chủ aliexpress-media; ảnh lỗi thì hiện ô trống thay vì icon vỡ
+const fixImg = (u) => String(u || '').replace(/^(https?:)?\/\/ae\d*\.alicdn\.com\/kf\//, 'https://ae-pic-a1.aliexpress-media.com/kf/').replace(/^\/\//, 'https://');
+const imgTag = (u) => u
+  ? `<img class="pimg" loading="lazy" referrerpolicy="no-referrer" src="${esc(fixImg(u))}" alt="" onerror="this.replaceWith(Object.assign(document.createElement('div'),{className:'pimg'}))">`
+  : '<div class="pimg"></div>';
 
 const LINKS = (kw) => [
   ['Shopee', `https://shopee.vn/search?keyword=${enc(kw)}&sortBy=sales`],
@@ -332,12 +337,12 @@ function renderChina(kw) {
   </div>`;
 
   const aliList = c.aliexpress.length ? c.aliexpress.map((p) => `<div class="it">
-      ${p.image ? `<img class="pimg" loading="lazy" src="${esc(p.image)}" alt="">` : '<div class="pimg"></div>'}
+      ${imgTag(p.image)}
       <a class="pname" href="${esc(p.url)}" target="_blank" rel="noopener">${esc(p.name)}</a>
       <div class="r"><b>${esc(p.price_text) || vnd(toVND(p.price, p.currency))}</b><div class="meta">${esc(p.sold_text || '–')}</div></div>
     </div>`).join('') : '<div class="empty">Chưa có dữ liệu</div>';
   const micList = c.mic.length ? c.mic.map((p) => `<div class="it">
-      ${p.image ? `<img class="pimg" loading="lazy" src="${esc(p.image)}" alt="">` : '<div class="pimg"></div>'}
+      ${imgTag(p.image)}
       <div style="min-width:0"><a class="pname" href="${esc(p.url)}" target="_blank" rel="noopener">${esc(p.name)}</a><div class="meta">${esc(p.supplier)}</div></div>
       <div class="r"><b>${p.price_min != null ? 'US$' + p.price_min + (p.price_max ? '–' + p.price_max : '') : 'Liên hệ'}</b>
         <div class="meta">${p.price_min != null ? '≈ ' + vnd(toVND(p.price_min, 'USD')) + ' · ' : ''}MOQ ${esc(p.moq || '–')}</div></div>
@@ -372,7 +377,7 @@ function renderP() {
     if (p.discount >= 30) tags.push(`<span class="tag up">-${p.discount}%</span>`);
     return `<tr>
       <td class="meta">${i + 1}</td>
-      <td>${p.image ? `<img class="pimg" loading="lazy" src="${esc(p.image)}" alt="">` : '<div class="pimg"></div>'}</td>
+      <td>${imgTag(p.image)}</td>
       <td><a class="pname" href="${esc(p.url)}" target="_blank" rel="noopener">${esc(p.name)}</a>
         <div>${tags.join('')}${p.brand && p.brand !== 'OEM' ? `<span class="meta">${esc(p.brand)}</span>` : ''}</div></td>
       <td class="num">${money(p.price)}</td>

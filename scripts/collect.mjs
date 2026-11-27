@@ -95,6 +95,8 @@ function sliceJSON(s, marker) {
 const soldNum = (t) => { const m = String(t || '').replace(/,/g, '').match(/([\d.]+)\s*(k|万)?/i); if (!m) return 0;
   return Math.round(parseFloat(m[1]) * (m[2] ? (m[2] === '万' ? 10000 : 1000) : 1)); };
 const fixUrl = (u) => (u && u.startsWith('//') ? 'https:' + u : u);
+// Ảnh ae01.alicdn.com bị chặn (403) khi xem từ VN -> đổi sang máy chủ ảnh aliexpress-media (cùng đường dẫn)
+const aliImg = (u) => fixUrl(u)?.replace(/^https?:\/\/ae\d*\.alicdn\.com\/kf\//, 'https://ae-pic-a1.aliexpress-media.com/kf/');
 
 // AliExpress: hàng bán lẻ từ TQ, sắp theo số đơn
 async function aliexpress(en) {
@@ -118,7 +120,7 @@ async function aliexpressPage(en) {
     sold: soldNum(x.trade?.tradeDesc),
     sold_text: x.trade?.tradeDesc || '',
     rating: x.evaluation?.starRating || 0,
-    image: fixUrl(x.image?.imgUrl),
+    image: aliImg(x.image?.imgUrl),
     url: `https://www.aliexpress.com/item/${x.productId}.html`,
   })).sort((a, b) => b.sold - a.sold).slice(0, 20);
 }
