@@ -27,8 +27,9 @@ jobs:
       - name: Thu thập dữ liệu
         run: node scripts/collect.mjs
         env:
-          DASHBOARD_USER: ${{ secrets.DASHBOARD_USER }}
-          DASHBOARD_PASSWORD: ${{ secrets.DASHBOARD_PASSWORD }}
+          # Secret ADMIN = tài khoản, ADMIN2 = mật khẩu đăng nhập dashboard
+          DASHBOARD_USER: ${{ secrets.ADMIN }}
+          DASHBOARD_PASSWORD: ${{ secrets.ADMIN2 }}
       - name: Lưu kết quả vào repo
         run: |
           git config user.name "radar-bot"

@@ -201,7 +201,7 @@ async function readPrev() {
 
 async function main() {
   if (process.env.CI && !(USER && PASS)) {
-    throw new Error('Thiếu DASHBOARD_USER / DASHBOARD_PASSWORD trong GitHub Secrets – dừng để không công khai dữ liệu chưa mã hóa.');
+    throw new Error('Thiếu DASHBOARD_USER / DASHBOARD_PASSWORD trong GitHub Secrets (ADMIN, ADMIN2) – dừng để không công khai dữ liệu chưa mã hóa.');
   }
   const history = loadHistory();
   const prev = await readPrev();
