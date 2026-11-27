@@ -23,6 +23,8 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+        with:
+          ref: main   # luôn lấy bản mới nhất, kể cả khi bấm chạy lại lần cũ
       - uses: actions/setup-node@v4
         with:
           node-version: 22
@@ -38,5 +40,5 @@ jobs:
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
           git add docs/data.json data/history
           git diff --cached --quiet || git commit -m "Cập nhật dữ liệu $(TZ=Asia/Ho_Chi_Minh date +%F)"
-          git pull --rebase
+          git pull --rebase -X theirs   # xung đột thì giữ dữ liệu vừa thu thập
           git push
