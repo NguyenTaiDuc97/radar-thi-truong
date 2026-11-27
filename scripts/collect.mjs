@@ -295,6 +295,7 @@ async function main() {
   const errors = [];
   const keywords = [];
   const snapshot = {};
+  let micBlocked = false;
 
   for (const [category, kws] of Object.entries(config.nganh_hang)) {
     for (const kw of kws) {
@@ -320,9 +321,16 @@ async function main() {
         china = { en: tr.en, zh: tr.zh || '', aliexpress: [], mic: [] };
         try { china.aliexpress = await aliexpress(tr.en); }
         catch (e) { errors.push(`AliExpress "${tr.en}": ${e.message}`); china.aliexpress = prevChina?.aliexpress || []; }
-        await sleep(800);
-        try { china.mic = await madeInChina(tr.en); }
-        catch (e) { errors.push(`Made-in-China "${tr.en}": ${e.message}`); china.mic = prevChina?.mic || []; }
+        china.mic = prevChina?.mic || [];
+        if (!micBlocked) {
+          await sleep(800);
+          try { china.mic = await madeInChina(tr.en); }
+          catch (e) {
+            // Made-in-China chặn IP máy chủ GitHub (403): báo 1 lần rồi bỏ qua các từ khóa còn lại
+            if (/403|captcha/.test(e.message)) { micBlocked = true; errors.push(`Made-in-China chặn máy chủ (${e.message}) – giữ dữ liệu cũ, xem tay bằng nút Made-in-China`); }
+            else errors.push(`Made-in-China "${tr.en}": ${e.message}`);
+          }
+        }
       }
       keywords.push({ category, keyword: kw, products, china });
       console.log(`✓ ${category} / ${kw}: ${products.length} SP Tiki` + (china ? `, ${china.aliexpress.length} AliExpress, ${china.mic.length} Made-in-China` : ''));
