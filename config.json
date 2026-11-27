@@ -1,0 +1,11 @@
+{
+  "_huong_dan": "Sửa danh sách ngành hàng và từ khóa bên dưới. Mỗi từ khóa sẽ được tìm trên Tiki mỗi ngày (lấy top bán chạy).",
+  "so_san_pham_moi_tu_khoa": 30,
+  "nganh_hang": {
+    "Phụ kiện xe điện": ["sạc xe máy điện", "mũ bảo hiểm", "áo mưa xe máy", "khóa chống trộm xe máy"],
+    "Gia dụng": ["nồi chiên không dầu", "máy lọc không khí", "robot hút bụi", "quạt tích điện"],
+    "Điện thoại & phụ kiện": ["tai nghe bluetooth", "sạc dự phòng", "ốp lưng iphone"],
+    "Làm đẹp": ["kem chống nắng", "sữa rửa mặt", "serum vitamin c"],
+    "Mẹ & bé": ["bỉm", "sữa bột"]
+  }
+}

@@ -1,0 +1,9 @@
+{
+  "name": "radar-thi-truong",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "collect": "node scripts/collect.mjs",
+    "serve": "node scripts/serve.mjs"
+  }
+}

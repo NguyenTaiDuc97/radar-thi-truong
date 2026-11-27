@@ -1,0 +1,247 @@
+<!doctype html>
+<html lang="vi">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Radar Thị Trường – Sản phẩm bán chạy</title>
+<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>📈</text></svg>">
+<style>
+  :root{
+    --bg:#f6f7f9;--panel:#fff;--ink:#16181d;--muted:#5f6672;--line:#e3e6eb;--soft:#f0f2f5;
+    --accent:#2563eb;--accent-soft:#e8efff;--hot:#e5484d;--hot-soft:#fdecec;--up:#18794e;--up-soft:#e6f4ec;
+    --bar:#2563eb;
+  }
+  @media (prefers-color-scheme:dark){
+    :root{--bg:#0f1115;--panel:#171a20;--ink:#e8eaee;--muted:#9aa1ad;--line:#2a2f38;--soft:#1f232b;
+      --accent:#6ea0ff;--accent-soft:#1c2740;--hot:#ff6b6f;--hot-soft:#3a1d20;--up:#4cc38a;--up-soft:#173126;--bar:#6ea0ff;}
+  }
+  *{box-sizing:border-box}
+  body{margin:0;background:var(--bg);color:var(--ink);font:14px/1.5 system-ui,-apple-system,"Segoe UI",Roboto,sans-serif}
+  a{color:var(--accent);text-decoration:none} a:hover{text-decoration:underline}
+  .wrap{max-width:1280px;margin:0 auto;padding:20px 16px 60px}
+  header{display:flex;flex-wrap:wrap;align-items:flex-end;justify-content:space-between;gap:8px 16px;margin-bottom:16px}
+  h1{font-size:22px;margin:0;letter-spacing:-.01em}
+  h2{font-size:15px;margin:0 0 10px}
+  .sub{color:var(--muted);font-size:13px}
+  .tiles{display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:10px;margin-bottom:16px}
+  .tile{background:var(--panel);border:1px solid var(--line);border-radius:10px;padding:12px 14px}
+  .tile .k{color:var(--muted);font-size:12px}
+  .tile .v{font-size:22px;font-weight:650;font-variant-numeric:tabular-nums;margin-top:2px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+  .tile .v.small{font-size:15px;white-space:normal;line-height:1.3}
+  .panel{background:var(--panel);border:1px solid var(--line);border-radius:10px;padding:14px;margin-bottom:16px}
+  .grid2{display:grid;grid-template-columns:minmax(0,2.2fr) minmax(0,1fr);gap:16px}
+  @media (max-width:900px){.grid2{grid-template-columns:1fr}}
+  .filters{display:flex;flex-wrap:wrap;gap:8px;align-items:center;margin-bottom:12px}
+  select,input[type=search]{font:inherit;color:inherit;background:var(--soft);border:1px solid var(--line);border-radius:8px;padding:7px 10px;min-width:0}
+  input[type=search]{flex:1;min-width:180px}
+  .chip{font:inherit;font-size:13px;border:1px solid var(--line);background:var(--soft);color:var(--ink);border-radius:999px;padding:5px 11px;cursor:pointer}
+  .chip.on{background:var(--accent-soft);border-color:var(--accent);color:var(--accent)}
+  table{width:100%;border-collapse:collapse}
+  th,td{text-align:left;padding:8px 8px;border-bottom:1px solid var(--line);vertical-align:middle}
+  th{font-size:12px;color:var(--muted);font-weight:600;white-space:nowrap;cursor:pointer;user-select:none;position:sticky;top:0;background:var(--panel)}
+  th.num,td.num{text-align:right;font-variant-numeric:tabular-nums;white-space:nowrap}
+  tr:hover td{background:var(--soft)}
+  .scroll{overflow:auto;max-height:720px}
+  .pimg{width:44px;height:44px;border-radius:6px;object-fit:cover;background:var(--soft);display:block}
+  .pname{display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden;max-width:420px}
+  .meta{color:var(--muted);font-size:12px}
+  .tag{display:inline-block;font-size:11px;padding:1px 7px;border-radius:999px;background:var(--soft);color:var(--muted);margin-right:4px;white-space:nowrap}
+  .tag.hot{background:var(--hot-soft);color:var(--hot);font-weight:600}
+  .tag.up{background:var(--up-soft);color:var(--up);font-weight:600}
+  .score{display:flex;align-items:center;gap:6px;justify-content:flex-end}
+  .score .b{width:54px;height:6px;border-radius:3px;background:var(--soft);overflow:hidden}
+  .score .b i{display:block;height:100%;background:var(--bar)}
+  .links a{display:inline-block;font-size:12px;padding:2px 7px;border:1px solid var(--line);border-radius:6px;margin:2px 2px 2px 0;white-space:nowrap}
+  .trend{display:flex;gap:10px;padding:8px 0;border-bottom:1px solid var(--line)}
+  .trend:last-child{border-bottom:0}
+  .trend b{display:block}
+  .rank{color:var(--muted);font-variant-numeric:tabular-nums;width:22px;flex:none}
+  .note{background:var(--accent-soft);border-radius:8px;padding:10px 12px;font-size:13px;margin-bottom:16px}
+  .err{background:var(--hot-soft);color:var(--hot);border-radius:8px;padding:8px 12px;font-size:13px;margin-bottom:16px}
+  .tools a{display:block;padding:7px 0;border-bottom:1px solid var(--line)}
+  .tools a:last-child{border-bottom:0}
+  .tools span{display:block;color:var(--muted);font-size:12px}
+  .empty{color:var(--muted);padding:30px;text-align:center}
+  @media (max-width:640px){.hide-m{display:none}.pname{max-width:200px}}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <div>
+      <h1>📈 Radar Thị Trường</h1>
+      <div class="sub">Sản phẩm bán chạy và xu hướng trên các sàn tại Việt Nam</div>
+    </div>
+    <div class="sub" id="updated">Đang tải…</div>
+  </header>
+
+  <div id="msg"></div>
+  <div class="tiles" id="tiles"></div>
+
+  <div class="panel">
+    <h2>Từ khóa theo dõi <span class="sub">– bấm tên để lọc, bấm nút để mở trang bán chạy trên từng nền tảng</span></h2>
+    <div class="scroll" style="max-height:420px"><table id="kwTable"></table></div>
+  </div>
+
+  <div class="grid2">
+    <div class="panel">
+      <h2>Sản phẩm hot</h2>
+      <div class="filters">
+        <select id="fCat"></select>
+        <select id="fKw"></select>
+        <input type="search" id="fQ" placeholder="Tìm tên sản phẩm, thương hiệu…">
+      </div>
+      <div class="filters" id="fPlat"></div>
+      <div class="scroll"><table id="pTable"></table></div>
+    </div>
+    <div>
+      <div class="panel">
+        <h2>🔎 Google: tìm kiếm đang nổi ở VN</h2>
+        <div id="trends"></div>
+      </div>
+      <div class="panel tools">
+        <h2>🧰 Công cụ xem thêm (mở tay)</h2>
+        <a href="https://ads.tiktok.com/business/creativecenter/top-products/pc/vi" target="_blank" rel="noopener">TikTok Creative Center – Top sản phẩm<span>Sản phẩm quảng cáo hiệu quả nhất trên TikTok (chọn Việt Nam)</span></a>
+        <a href="https://ads.tiktok.com/business/creativecenter/inspiration/popular/hashtag/pc/vi" target="_blank" rel="noopener">TikTok Creative Center – Hashtag hot<span>Hashtag đang lên tại VN</span></a>
+        <a href="https://www.facebook.com/ads/library/?active_status=active&ad_type=all&country=VN" target="_blank" rel="noopener">Facebook Ad Library<span>Xem đối thủ đang chạy quảng cáo gì, chạy bao lâu</span></a>
+        <a href="https://shopee.vn/top_products" target="_blank" rel="noopener">Shopee – Tìm kiếm hàng đầu<span>Top sản phẩm theo ngành của Shopee</span></a>
+        <a href="https://trends.google.com/trends/explore?geo=VN" target="_blank" rel="noopener">Google Trends – So sánh từ khóa<span>So xu hướng tìm kiếm nhiều từ khóa</span></a>
+        <a href="https://metric.vn/" target="_blank" rel="noopener">Metric.vn<span>Số liệu doanh số Shopee/Lazada/Tiki/TikTok (trả phí) – xuất ra rồi dán vào data/manual.csv</span></a>
+        <a href="https://www.kalodata.com/" target="_blank" rel="noopener">Kalodata / FastMoss<span>Số liệu TikTok Shop (trả phí)</span></a>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+const $ = (s) => document.querySelector(s);
+const fmt = (n) => n == null ? '–' : Number(n).toLocaleString('vi-VN');
+const money = (n) => n == null ? '–' : Number(n).toLocaleString('vi-VN') + '₫';
+const esc = (s) => String(s ?? '').replace(/[&<>"']/g, (c) => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+const enc = encodeURIComponent;
+
+const LINKS = (kw) => [
+  ['Shopee', `https://shopee.vn/search?keyword=${enc(kw)}&sortBy=sales`],
+  ['TikTok', `https://www.tiktok.com/search?q=${enc(kw)}`],
+  ['Lazada', `https://www.lazada.vn/catalog/?q=${enc(kw)}&sortBy=order`],
+  ['Tiki', `https://tiki.vn/search?q=${enc(kw)}&sort=top_seller`],
+  ['FB Ads', `https://www.facebook.com/ads/library/?active_status=active&ad_type=all&country=VN&q=${enc(kw)}&search_type=keyword_unordered`],
+  ['Trends', `https://trends.google.com/trends/explore?geo=VN&date=today%203-m&q=${enc(kw)}`],
+];
+
+let D, state = { cat: '', kw: '', plat: '', q: '', sort: 'score', dir: -1 };
+
+fetch('data.json?' + Date.now()).then((r) => r.json()).then((d) => { D = d; init(); })
+  .catch(() => { $('#updated').textContent = ''; $('#msg').innerHTML = '<div class="err">Không đọc được data.json. Hãy chạy <code>node scripts/collect.mjs</code> trước, và mở trang qua máy chủ (node scripts/serve.mjs), không mở trực tiếp file.</div>'; });
+
+function init() {
+  const t = new Date(D.updated_at);
+  $('#updated').textContent = 'Cập nhật: ' + t.toLocaleString('vi-VN', { dateStyle: 'medium', timeStyle: 'short' });
+
+  const all = D.keywords.flatMap((k) => k.products.map((p) => ({ ...p, keyword: k.keyword, cat: k.category })));
+  D.all = all;
+  // ngưỡng "tăng mạnh": top 10% bán/ngày
+  const v = all.map((p) => p.per_day || 0).filter((x) => x > 0).sort((a, b) => b - a);
+  D.hotCut = v.length ? v[Math.max(0, Math.floor(v.length * 0.1) - 1)] : Infinity;
+
+  let msg = '';
+  if (!D.history_days) msg += '<div class="note">📌 Đây là ngày dữ liệu đầu tiên nên chưa tính được <b>bán/ngày</b>. Điểm hot tạm tính theo tổng đã bán và đánh giá. Từ ngày mai, app sẽ so số bán giữa các ngày để tìm sản phẩm đang <b>tăng nhanh</b>.</div>';
+  if (D.errors?.length) msg += `<div class="err">⚠️ Lần cập nhật này có ${D.errors.length} lỗi: ${D.errors.map(esc).join(' · ')}</div>`;
+  $('#msg').innerHTML = msg;
+
+  const hasVel = D.keywords.some((k) => k.total_per_day != null);
+  const topKw = [...D.keywords].sort((a, b) => hasVel ? (b.total_per_day || 0) - (a.total_per_day || 0) : b.total_sold - a.total_sold)[0];
+  const topP = [...all].sort((a, b) => hasVel ? (b.per_day || 0) - (a.per_day || 0) : b.sold - a.sold)[0];
+  $('#tiles').innerHTML = [
+    ['Từ khóa theo dõi', D.keywords.length],
+    ['Sản phẩm đang theo dõi', fmt(all.length)],
+    ['Số ngày có dữ liệu', (D.history_days || 0) + 1],
+    [hasVel ? 'Từ khóa bán nhanh nhất' : 'Từ khóa bán nhiều nhất', esc(topKw?.keyword), 'small'],
+    [hasVel ? 'Sản phẩm bán nhanh nhất' : 'Sản phẩm bán nhiều nhất', esc(topP?.name?.slice(0, 60)), 'small'],
+  ].map(([k, v, c]) => `<div class="tile"><div class="k">${k}</div><div class="v ${c || ''}">${v ?? '–'}</div></div>`).join('');
+
+  renderKw(hasVel);
+  renderTrends();
+
+  const cats = [...new Set(D.keywords.map((k) => k.category))];
+  $('#fCat').innerHTML = '<option value="">Tất cả ngành hàng</option>' + cats.map((c) => `<option>${esc(c)}</option>`).join('');
+  $('#fCat').onchange = (e) => { state.cat = e.target.value; state.kw = ''; fillKw(); renderP(); };
+  $('#fKw').onchange = (e) => { state.kw = e.target.value; renderP(); };
+  $('#fQ').oninput = (e) => { state.q = e.target.value.toLowerCase(); renderP(); };
+  const plats = [...new Set(all.map((p) => p.platform))];
+  $('#fPlat').innerHTML = ['', ...plats].map((p) => `<button class="chip ${p === '' ? 'on' : ''}" data-p="${esc(p)}">${p || 'Tất cả nền tảng'}</button>`).join('');
+  $('#fPlat').onclick = (e) => { const b = e.target.closest('.chip'); if (!b) return; state.plat = b.dataset.p;
+    $('#fPlat').querySelectorAll('.chip').forEach((x) => x.classList.toggle('on', x === b)); renderP(); };
+  fillKw(); renderP();
+}
+
+function fillKw() {
+  const kws = D.keywords.filter((k) => !state.cat || k.category === state.cat);
+  $('#fKw').innerHTML = '<option value="">Tất cả từ khóa</option>' + kws.map((k) => `<option ${k.keyword === state.kw ? 'selected' : ''}>${esc(k.keyword)}</option>`).join('');
+}
+
+function renderKw(hasVel) {
+  const rows = [...D.keywords].sort((a, b) => hasVel ? (b.total_per_day || 0) - (a.total_per_day || 0) : b.total_sold - a.total_sold);
+  $('#kwTable').innerHTML = `<thead><tr><th>Từ khóa</th><th class="hide-m">Ngành hàng</th><th class="num">Đã bán (top SP)</th><th class="num">Bán/ngày</th><th class="hide-m">Sản phẩm dẫn đầu</th><th>Xem nhanh</th></tr></thead><tbody>` +
+    rows.map((k) => `<tr>
+      <td><a href="#" data-kw="${esc(k.keyword)}"><b>${esc(k.keyword)}</b></a><div class="meta">${k.products.length} sản phẩm</div></td>
+      <td class="hide-m">${esc(k.category)}</td>
+      <td class="num">${fmt(k.total_sold)}</td>
+      <td class="num">${k.total_per_day == null ? '<span class="meta">chưa có</span>' : fmt(k.total_per_day)}</td>
+      <td class="hide-m"><div class="pname meta">${esc(k.products[0]?.name || '–')}</div></td>
+      <td class="links">${LINKS(k.keyword).map(([n, u]) => `<a href="${u}" target="_blank" rel="noopener">${n}</a>`).join('')}</td>
+    </tr>`).join('') + '</tbody>';
+  $('#kwTable').onclick = (e) => { const a = e.target.closest('a[data-kw]'); if (!a) return; e.preventDefault();
+    const k = D.keywords.find((x) => x.keyword === a.dataset.kw); state.cat = k.category; state.kw = k.keyword;
+    $('#fCat').value = k.category; fillKw(); renderP(); $('#pTable').scrollIntoView({ behavior: 'smooth', block: 'start' }); };
+}
+
+const COLS = [
+  ['#', null], ['', null], ['Sản phẩm', null], ['Giá', 'price', 'num'], ['Đã bán', 'sold', 'num'],
+  ['Bán/ngày', 'per_day', 'num'], ['Đánh giá', 'rating', 'num hide-m'], ['Điểm hot', 'score', 'num'],
+];
+
+function renderP() {
+  let list = D.all.filter((p) => (!state.cat || p.cat === state.cat) && (!state.kw || p.keyword === state.kw)
+    && (!state.plat || p.platform === state.plat)
+    && (!state.q || (p.name + ' ' + (p.brand || '')).toLowerCase().includes(state.q)));
+  // bỏ trùng sản phẩm xuất hiện ở nhiều từ khóa
+  const seen = new Set(); list = list.filter((p) => !seen.has(p.key + p.keyword) && seen.add(p.key + p.keyword));
+  const s = state.sort;
+  list.sort((a, b) => ((a[s] ?? -1) - (b[s] ?? -1)) * state.dir);
+  list = list.slice(0, 300);
+
+  const head = '<thead><tr>' + COLS.map(([n, k, c]) => `<th class="${c || ''}" data-s="${k || ''}">${n}${k === s ? (state.dir < 0 ? ' ↓' : ' ↑') : ''}</th>`).join('') + '</tr></thead>';
+  const body = list.length ? list.map((p, i) => {
+    const tags = [`<span class="tag">${esc(p.platform)}</span>`];
+    if (!state.kw) tags.push(`<span class="tag">${esc(p.keyword)}</span>`);
+    if (p.per_day && p.per_day >= D.hotCut) tags.push('<span class="tag hot">🔥 tăng mạnh</span>');
+    if (p.discount >= 30) tags.push(`<span class="tag up">-${p.discount}%</span>`);
+    return `<tr>
+      <td class="meta">${i + 1}</td>
+      <td>${p.image ? `<img class="pimg" loading="lazy" src="${esc(p.image)}" alt="">` : '<div class="pimg"></div>'}</td>
+      <td><a class="pname" href="${esc(p.url)}" target="_blank" rel="noopener">${esc(p.name)}</a>
+        <div>${tags.join('')}${p.brand && p.brand !== 'OEM' ? `<span class="meta">${esc(p.brand)}</span>` : ''}</div></td>
+      <td class="num">${money(p.price)}</td>
+      <td class="num">${fmt(p.sold)}</td>
+      <td class="num">${p.per_day == null ? '<span class="meta">–</span>' : fmt(p.per_day)}</td>
+      <td class="num hide-m">${p.rating ? p.rating.toFixed(1) + '★ <span class="meta">(' + fmt(p.reviews) + ')</span>' : '<span class="meta">–</span>'}</td>
+      <td class="num"><div class="score"><div class="b"><i style="width:${p.score}%"></i></div>${p.score}</div></td>
+    </tr>`;
+  }).join('') : `<tr><td colspan="8" class="empty">Không có sản phẩm phù hợp</td></tr>`;
+  $('#pTable').innerHTML = head + '<tbody>' + body + '</tbody>';
+  $('#pTable').querySelector('thead').onclick = (e) => { const th = e.target.closest('th'); const k = th?.dataset.s; if (!k) return;
+    state.dir = state.sort === k ? -state.dir : -1; state.sort = k; renderP(); };
+}
+
+function renderTrends() {
+  const t = D.trends || [];
+  $('#trends').innerHTML = t.length ? t.map((x, i) => `<div class="trend"><div class="rank">${i + 1}</div><div>
+      <b><a href="https://www.google.com/search?q=${enc(x.term)}" target="_blank" rel="noopener">${esc(x.term)}</a></b>
+      <span class="meta">${esc(x.traffic)} lượt tìm</span>
+      ${x.news ? `<div class="meta"><a href="${esc(x.news_url)}" target="_blank" rel="noopener" style="color:inherit">${esc(x.news)}</a></div>` : ''}
+    </div></div>`).join('') : '<div class="empty">Chưa có dữ liệu</div>';
+}
+</script>
+</body>
+</html>
