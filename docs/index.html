@@ -248,6 +248,8 @@ function init() {
   D.hotCut = v.length ? v[Math.max(0, Math.floor(v.length * 0.1) - 1)] : Infinity;
 
   let msg = '';
+  const ageH = (Date.now() - t) / 3600e3;
+  if (ageH > 12) msg += `<div class="err">⏰ Dữ liệu đã ${Math.floor(ageH)} giờ chưa được cập nhật (lịch tự động chạy 6h, 9h, 12h, 15h, 18h). Có thể GitHub đã bỏ lỡ lịch – vào GitHub → Actions → "Cập nhật dữ liệu thị trường" → Run workflow để chạy tay.</div>`;
   if (!D.history_days) msg += '<div class="note">📌 Đây là ngày dữ liệu đầu tiên nên chưa tính được <b>bán/ngày</b>. Điểm hot tạm tính theo tổng đã bán và đánh giá. Từ ngày mai, app sẽ so số bán giữa các ngày để tìm sản phẩm đang <b>tăng nhanh</b>.</div>';
   if (D.errors?.length) msg += `<div class="err">⚠️ Lần cập nhật này có ${D.errors.length} lỗi: ${D.errors.map(esc).join(' · ')}</div>`;
   $('#msg').innerHTML = msg;

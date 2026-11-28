@@ -2,7 +2,9 @@ name: Cập nhật dữ liệu thị trường
 
 on:
   schedule:
-    - cron: "0 23 * * *"   # 6:00 sáng giờ Việt Nam mỗi ngày
+    # Lịch của GitHub có thể trễ hoặc bị bỏ qua (nhất là đúng mốc tròn giờ),
+    # nên chạy 5 lần/ngày ở phút 17: 6:17, 9:17, 12:17, 15:17, 18:17 giờ Việt Nam
+    - cron: "17 23,2,5,8,11 * * *"
   workflow_dispatch:        # cho phép bấm chạy tay trong tab Actions
   push:
     paths:
